@@ -50,7 +50,7 @@ You can add a simple route with `AddRoute` and `AddRouteWithFunc`:
 
 The first method accepts a [http.Handler](https://pkg.go.dev/net/http#Handler) while the second accepts a [http.HandlerFunc](https://pkg.go.dev/net/http#HandlerFunc).
 
-For more complex cases, you can simple ask for a `SubRouter`(https://pkg.go.dev/github.com/gorilla/mux#Router):
+For more complex cases, you can simple ask for a [SubRouter](https://pkg.go.dev/github.com/gorilla/mux#Router):
 
 ```go
 	apiRouter := server.SubRouter("/api")
