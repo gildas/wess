@@ -242,6 +242,21 @@ func (server Server) IsReady() bool {
 	return atomic.LoadInt32(&server.healthStatus) == 1
 }
 
+// AddRoute adds a route to the server
+func (server Server) AddRoute(method, path string, handler http.Handler) {
+	server.webrouter.Methods(method).Path(path).Handler(handler)
+}
+
+// AddRouteWithFunc adds a route to the server
+func (server Server) AddRouteWithFunc(method, path string, handlerFunc http.HandlerFunc) {
+	server.webrouter.Methods(method).Path(path).HandlerFunc(handlerFunc)
+}
+
+// SubRouter creates a subrouter
+func (server Server) SubRouter(path string) *mux.Router {
+	return server.webrouter.PathPrefix(path).Subrouter()
+}
+
 // Start starts the server
 func (server Server) Start(context context.Context) (shutdown chan error, err error) {
 	log := server.getChildLogger(context, "webserver", "start")
