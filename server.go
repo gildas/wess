@@ -331,17 +331,15 @@ func (server Server) waitForShutdown(ctx context.Context) (shutdown chan error) 
 		log.Infof("Received signal %s, shutting down...", sig)
 
 		// Stopping the probe server
-		/*
-			if *probePort > 0 && *probePort != *port {
-				log.Debugf("Stopping the probe server")
-				probeServer.SetKeepAlivesEnabled(false)
-				if err := probeServer.Shutdown(context); err != nil {
-					log.Errorf("Failed to gracefully shutdown the probe server: %s", err)
-				} else {
-					log.Infof("Probe Server stopped")
-				}
+		if server.probeserver != nil {
+			log.Debugf("Stopping the probe server")
+			server.probeserver.SetKeepAlivesEnabled(false)
+			if err := server.probeserver.Shutdown(context); err != nil {
+				log.Errorf("Failed to gracefully shutdown the probe server: %s", err)
+			} else {
+				log.Infof("Probe Server stopped")
 			}
-		*/
+		}
 
 		// Stopping the WEB server
 		log.Debugf("Stopping the WEB server")
