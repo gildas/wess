@@ -261,14 +261,16 @@ func (server Server) SubRouter(path string) *mux.Router {
 func (server Server) Start(context context.Context) (shutdown chan error, err error) {
 	log := server.getChildLogger(context, "webserver", "start")
 
-	log.Infof("Listening on %s", server.webserver.Addr)
-	server.logRoutes(log.ToContext(context))
-
 	if server.proberouter != nil {
 		server.healthRoutes(server.proberouter)
 	}
+
+	log.Infof("Listening on %s", server.webserver.Addr)
+	server.logRoutes(log.ToContext(context), server.webrouter)
+
 	if server.probeserver != nil {
 		log.Infof("Health probe routes will be served on port %s", server.probeserver.Addr)
+		server.logRoutes(log.ToContext(context), server.proberouter)
 		if err = server.waitForStart(log.ToContext(context), server.probeserver); err != nil {
 			return nil, err
 		}
@@ -281,10 +283,10 @@ func (server Server) Start(context context.Context) (shutdown chan error, err er
 }
 
 // logRoutes logs the routes
-func (server Server) logRoutes(context context.Context) {
+func (server Server) logRoutes(context context.Context, router *mux.Router) {
 	log := server.getChildLogger(context, "webserver", "routes")
 	log.Infof("Serving routes:")
-	_ = server.webrouter.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+	_ = router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 		message := strings.Builder{}
 		args := []interface{}{}
 
