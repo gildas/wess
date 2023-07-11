@@ -258,7 +258,7 @@ func (server Server) SubRouter(path string) *mux.Router {
 }
 
 // Start starts the server
-func (server Server) Start(context context.Context) (shutdown chan error, err error) {
+func (server *Server) Start(context context.Context) (shutdown chan error, err error) {
 	log := server.getChildLogger(context, "webserver", "start")
 
 	if server.proberouter != nil {
