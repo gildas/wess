@@ -206,7 +206,7 @@ func NewServer(options ServerOptions) *Server {
 				ConnContext:       options.ConnContext,
 			}
 		}
-		if len(core.GetEnvAsString("TRACE_PROBE", "")) > 0 {
+		if core.GetEnvAsBool("TRACE_PROBE", false) {
 			proberouter.Use(options.Logger.HttpHandler())
 		} else {
 			proberouter.Use(logger.Create("wess", &logger.NilStream{}).HttpHandler())
