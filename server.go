@@ -202,13 +202,15 @@ func NewServer(options ServerOptions) *Server {
 		}
 		if options.ProbePort == options.Port {
 			proberouter = options.Router.PathPrefix(options.HealthRootPath).Subrouter()
+			proberouter.Use(probelogger.HttpHandler())
 		} else {
-			proberouter = mux.NewRouter().StrictSlash(true).PathPrefix(options.HealthRootPath).Subrouter()
-			proberouter.NotFoundHandler = notFoundHandler()
-			proberouter.MethodNotAllowedHandler = methodNotAllowedHandler()
+			router := mux.NewRouter().StrictSlash(true)
+			router.Use(probelogger.HttpHandler())
+			proberouter = router.PathPrefix(options.HealthRootPath).Subrouter()
+			router.PathPrefix("/").Handler(notFoundHandler())
 			probeserver = &http.Server{
 				Addr:              fmt.Sprintf("%s:%d", options.Address, options.ProbePort),
-				Handler:           proberouter,
+				Handler:           router,
 				TLSConfig:         options.TLSConfig,
 				ReadTimeout:       options.ReadTimeout,
 				ReadHeaderTimeout: options.ReadHeaderTimeout,
