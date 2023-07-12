@@ -214,7 +214,7 @@ func NewServer(options ServerOptions) *Server {
 			}
 		}
 		if core.GetEnvAsBool("TRACE_PROBE", false) {
-			proberouter.Use(options.Logger.HttpHandler())
+			proberouter.Use(options.Logger.Child("probeserver", nil).HttpHandler())
 		} else {
 			proberouter.Use(logger.Create("wess", &logger.NilStream{}).HttpHandler())
 		}
@@ -276,9 +276,10 @@ func (server *Server) Start(context context.Context) (shutdown chan error, err e
 	server.logRoutes(log.ToContext(context), server.webrouter)
 
 	if server.probeserver != nil {
-		log.Infof("Health probe routes will be served on port %s", server.probeserver.Addr)
-		server.logRoutes(log.ToContext(context), server.proberouter)
-		if err = server.waitForStart(log.ToContext(context), server.probeserver); err != nil {
+		plog := log.Child("probeserver", nil)
+		plog.Infof("Health probes listening on %s", server.probeserver.Addr)
+		server.logRoutes(plog.ToContext(context), server.probeserver.Handler.(*mux.Router))
+		if err = server.waitForStart(plog.ToContext(context), server.probeserver); err != nil {
 			return nil, err
 		}
 	}
@@ -291,7 +292,7 @@ func (server *Server) Start(context context.Context) (shutdown chan error, err e
 
 // logRoutes logs the routes
 func (server Server) logRoutes(context context.Context, router *mux.Router) {
-	log := server.getChildLogger(context, "webserver", "routes")
+	log := server.getChildLogger(context, nil, "routes")
 	log.Infof("Serving routes:")
 	_ = router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 		message := strings.Builder{}
@@ -337,7 +338,11 @@ func (server *Server) waitForStart(context context.Context, httpserver *http.Ser
 			return err
 		}
 	case <-time.After(time.Second * 1):
-		log.Infof("WEB Server started")
+		if httpserver == server.probeserver {
+			log.Child("probeserver", nil).Infof("Health probe server started")
+		} else {
+			log.Infof("WEB Server started")
+		}
 	}
 	return nil
 }
