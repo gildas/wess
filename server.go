@@ -19,16 +19,21 @@ import (
 
 // ServerOptions defines the options for the server
 type ServerOptions struct {
-	Address   string      // The address to listen on, Default: all interfaces
-	Port      int         // The port to listen on, Default: 80
-	ProbePort int         // The port to listen on for the health probe, Default: 0 (disabled)
-	Router    *mux.Router // The router to use
+	Address   string // The address to listen on, Default: all interfaces
+	Port      int    // The port to listen on, Default: 80
+	ProbePort int    // The port to listen on for the health probe, Default: 0 (disabled)
 
-	// HealthRootPath is the root path for the health probe, Default: "/healthz"
+	// The gorilla/mux router to use.
+	// If not specified, a new one is created.
+	Router *mux.Router
+
+	// HealthRootPath is the root path for the health probe.
+	// By default: "/healthz"
 	HealthRootPath string
 
-	// DisableGeneralOptionsHandler, if true, passes "OPTIONS *" requests to the Handler,
-	// otherwise responds with 200 OK and Content-Length: 0.
+	// DisableGeneralOptionsHandler, if true, passes "OPTIONS *"
+	// requests to the Handler, otherwise responds with 200 OK
+	// and Content-Length: 0.
 	DisableGeneralOptionsHandler bool
 
 	// TLSConfig optionally provides a TLS configuration for use
@@ -99,12 +104,13 @@ type ServerOptions struct {
 	ConnState func(net.Conn, http.ConnState)
 
 	// Logger is the logger used by this server
+	// If not specified, nothing gets logged.
 	Logger *logger.Logger
 
 	// ErrorLog specifies an optional logger for errors accepting
 	// connections, unexpected behavior from handlers, and
 	// underlying FileSystem errors.
-	// If nil, logging is done via the log package's standard logger.
+	// If nil, logging is done via the Logger defined above.
 	ErrorLog *log.Logger
 
 	// BaseContext optionally specifies a function that returns
@@ -124,7 +130,8 @@ type ServerOptions struct {
 	// Configurable Handler to be used when no route matches.
 	NotFoundHandler http.Handler
 
-	// Configurable Handler to be used when the request method does not match the route.
+	// Configurable Handler to be used when the request method
+	// does not match the route.
 	MethodNotAllowedHandler http.Handler
 }
 
@@ -153,14 +160,23 @@ func NewServer(options ServerOptions) *Server {
 	if options.ShutdownTimeout == 0 {
 		options.ShutdownTimeout = time.Second * 15
 	}
+
+	var probelogger *logger.Logger
 	if options.Logger == nil {
-		options.Logger = logger.Create("wess", &logger.NilStream{}).Child("webserver", "webserver")
+		options.Logger = logger.Create("wess", &logger.NilStream{})
+		probelogger = logger.Create("wess", &logger.NilStream{})
 	} else {
+		if core.GetEnvAsBool("TRACE_PROBE", false) {
+			probelogger = options.Logger.Child("probeserver", nil)
+		} else {
+			probelogger = logger.Create("wess", &logger.NilStream{})
+		}
 		options.Logger = options.Logger.Child("webserver", "webserver")
 	}
 	if options.ErrorLog == nil {
 		options.ErrorLog = options.Logger.AsStandardLog()
 	}
+
 	if options.Router == nil {
 		options.Router = mux.NewRouter().StrictSlash(true)
 	}
@@ -186,13 +202,15 @@ func NewServer(options ServerOptions) *Server {
 		}
 		if options.ProbePort == options.Port {
 			proberouter = options.Router.PathPrefix(options.HealthRootPath).Subrouter()
+			proberouter.Use(probelogger.HttpHandler())
 		} else {
-			proberouter = mux.NewRouter().StrictSlash(true).PathPrefix(options.HealthRootPath).Subrouter()
-			proberouter.NotFoundHandler = notFoundHandler()
-			proberouter.MethodNotAllowedHandler = methodNotAllowedHandler()
+			router := mux.NewRouter().StrictSlash(true)
+			router.Use(probelogger.HttpHandler())
+			proberouter = router.PathPrefix(options.HealthRootPath).Subrouter()
+			router.PathPrefix("/").Handler(notFoundHandler())
 			probeserver = &http.Server{
 				Addr:              fmt.Sprintf("%s:%d", options.Address, options.ProbePort),
-				Handler:           proberouter,
+				Handler:           router,
 				TLSConfig:         options.TLSConfig,
 				ReadTimeout:       options.ReadTimeout,
 				ReadHeaderTimeout: options.ReadHeaderTimeout,
@@ -205,11 +223,6 @@ func NewServer(options ServerOptions) *Server {
 				BaseContext:       options.BaseContext,
 				ConnContext:       options.ConnContext,
 			}
-		}
-		if len(core.GetEnvAsString("TRACE_PROBE", "")) > 0 {
-			proberouter.Use(options.Logger.HttpHandler())
-		} else {
-			proberouter.Use(logger.Create("wess", &logger.NilStream{}).HttpHandler())
 		}
 	}
 
@@ -258,18 +271,21 @@ func (server Server) SubRouter(path string) *mux.Router {
 }
 
 // Start starts the server
-func (server Server) Start(context context.Context) (shutdown chan error, err error) {
+func (server *Server) Start(context context.Context) (shutdown chan error, err error) {
 	log := server.getChildLogger(context, "webserver", "start")
-
-	log.Infof("Listening on %s", server.webserver.Addr)
-	server.logRoutes(log.ToContext(context))
 
 	if server.proberouter != nil {
 		server.healthRoutes(server.proberouter)
 	}
+
+	log.Infof("Listening on %s", server.webserver.Addr)
+	server.logRoutes(log.ToContext(context), server.webrouter)
+
 	if server.probeserver != nil {
-		log.Infof("Health probe routes will be served on port %s", server.probeserver.Addr)
-		if err = server.waitForStart(log.ToContext(context), server.probeserver); err != nil {
+		plog := log.Child("probeserver", nil)
+		plog.Infof("Health probes listening on %s", server.probeserver.Addr)
+		server.logRoutes(plog.ToContext(context), server.probeserver.Handler.(*mux.Router))
+		if err = server.waitForStart(plog.ToContext(context), server.probeserver); err != nil {
 			return nil, err
 		}
 	}
@@ -281,10 +297,10 @@ func (server Server) Start(context context.Context) (shutdown chan error, err er
 }
 
 // logRoutes logs the routes
-func (server Server) logRoutes(context context.Context) {
-	log := server.getChildLogger(context, "webserver", "routes")
+func (server Server) logRoutes(context context.Context, router *mux.Router) {
+	log := server.getChildLogger(context, nil, "routes")
 	log.Infof("Serving routes:")
-	_ = server.webrouter.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+	_ = router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 		message := strings.Builder{}
 		args := []interface{}{}
 
@@ -328,7 +344,11 @@ func (server *Server) waitForStart(context context.Context, httpserver *http.Ser
 			return err
 		}
 	case <-time.After(time.Second * 1):
-		log.Infof("WEB Server started")
+		if httpserver == server.probeserver {
+			log.Child("probeserver", nil).Infof("Health probe server started")
+		} else {
+			log.Infof("WEB Server started")
+		}
 	}
 	return nil
 }

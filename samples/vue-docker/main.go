@@ -21,7 +21,10 @@ var (
 )
 
 func main() {
-	port := flag.Int("port", core.GetEnvAsInt("PORT", 80), "The port to listen on")
+	var (
+		port      = flag.Int("port", core.GetEnvAsInt("PORT", 80), "The port to listen on")
+		probePort = flag.Int("probeport", core.GetEnvAsInt("PROBE_PORT", 0), "The port to listen on for the health probe")
+	)
 	flag.Parse()
 
 	log := logger.Create(APP)
@@ -36,8 +39,9 @@ func main() {
 	}
 
 	server := wess.NewServer(wess.ServerOptions{
-		Port:   *port,
-		Logger: log,
+		Port:      *port,
+		ProbePort: *probePort,
+		Logger:    log,
 	})
 
 	_ = server.AddFrontend("/", frontendFS, "frontend/dist")

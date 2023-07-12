@@ -15,8 +15,7 @@ import (
 )
 
 var (
-	APP     = "sample-web"
-	VERSION = "1.0.0"
+	APP = "sample-web"
 
 	//go:embed all:frontend/dist
 	frontendFS embed.FS
@@ -29,7 +28,7 @@ func main() {
 	log := logger.Create(APP)
 	defer log.Flush()
 	log.Infof(strings.Repeat("-", 80))
-	log.Infof("Starting %s v%s (%s)", APP, VERSION, runtime.GOARCH)
+	log.Infof("Starting %s v%s (%s)", APP, wess.VERSION, runtime.GOARCH)
 	log.Infof("Log Destination: %s", log)
 
 	if *port == 0 {

@@ -9,13 +9,13 @@ import (
 )
 
 // healthRoutes adds the Health Routes to the given Router
-func (server Server) healthRoutes(router *mux.Router) {
+func (server *Server) healthRoutes(router *mux.Router) {
 	router.Methods("GET").Path("/liveness").Handler(healthHandler(server, "liveness"))
 	router.Methods("GET").Path("/readiness").Handler(healthHandler(server, "readiness"))
 }
 
 // healthHandler handles the readiness probe
-func healthHandler(server Server, probename string) http.Handler {
+func healthHandler(server *Server, probename string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log := logger.Must(logger.FromContext(r.Context())).Child("health", probename)
 
