@@ -19,16 +19,21 @@ import (
 
 // ServerOptions defines the options for the server
 type ServerOptions struct {
-	Address   string      // The address to listen on, Default: all interfaces
-	Port      int         // The port to listen on, Default: 80
-	ProbePort int         // The port to listen on for the health probe, Default: 0 (disabled)
-	Router    *mux.Router // The router to use
+	Address   string // The address to listen on, Default: all interfaces
+	Port      int    // The port to listen on, Default: 80
+	ProbePort int    // The port to listen on for the health probe, Default: 0 (disabled)
 
-	// HealthRootPath is the root path for the health probe, Default: "/healthz"
+	// The gorilla/mux router to use.
+	// If not specified, a new one is created.
+	Router *mux.Router
+
+	// HealthRootPath is the root path for the health probe.
+	// By default: "/healthz"
 	HealthRootPath string
 
-	// DisableGeneralOptionsHandler, if true, passes "OPTIONS *" requests to the Handler,
-	// otherwise responds with 200 OK and Content-Length: 0.
+	// DisableGeneralOptionsHandler, if true, passes "OPTIONS *"
+	// requests to the Handler, otherwise responds with 200 OK
+	// and Content-Length: 0.
 	DisableGeneralOptionsHandler bool
 
 	// TLSConfig optionally provides a TLS configuration for use
@@ -99,12 +104,13 @@ type ServerOptions struct {
 	ConnState func(net.Conn, http.ConnState)
 
 	// Logger is the logger used by this server
+	// If not specified, nothing gets logged.
 	Logger *logger.Logger
 
 	// ErrorLog specifies an optional logger for errors accepting
 	// connections, unexpected behavior from handlers, and
 	// underlying FileSystem errors.
-	// If nil, logging is done via the log package's standard logger.
+	// If nil, logging is done via the Logger defined above.
 	ErrorLog *log.Logger
 
 	// BaseContext optionally specifies a function that returns
@@ -124,7 +130,8 @@ type ServerOptions struct {
 	// Configurable Handler to be used when no route matches.
 	NotFoundHandler http.Handler
 
-	// Configurable Handler to be used when the request method does not match the route.
+	// Configurable Handler to be used when the request method
+	// does not match the route.
 	MethodNotAllowedHandler http.Handler
 }
 
