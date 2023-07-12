@@ -160,14 +160,23 @@ func NewServer(options ServerOptions) *Server {
 	if options.ShutdownTimeout == 0 {
 		options.ShutdownTimeout = time.Second * 15
 	}
+
+	var probelogger *logger.Logger
 	if options.Logger == nil {
-		options.Logger = logger.Create("wess", &logger.NilStream{}).Child("webserver", "webserver")
+		options.Logger = logger.Create("wess", &logger.NilStream{})
+		probelogger = logger.Create("wess", &logger.NilStream{})
 	} else {
+		if core.GetEnvAsBool("TRACE_PROBE", false) {
+			probelogger = options.Logger.Child("probeserver", nil)
+		} else {
+			probelogger = logger.Create("wess", &logger.NilStream{})
+		}
 		options.Logger = options.Logger.Child("webserver", "webserver")
 	}
 	if options.ErrorLog == nil {
 		options.ErrorLog = options.Logger.AsStandardLog()
 	}
+
 	if options.Router == nil {
 		options.Router = mux.NewRouter().StrictSlash(true)
 	}
@@ -212,11 +221,6 @@ func NewServer(options ServerOptions) *Server {
 				BaseContext:       options.BaseContext,
 				ConnContext:       options.ConnContext,
 			}
-		}
-		if core.GetEnvAsBool("TRACE_PROBE", false) {
-			proberouter.Use(options.Logger.Child("probeserver", nil).HttpHandler())
-		} else {
-			proberouter.Use(logger.Create("wess", &logger.NilStream{}).HttpHandler())
 		}
 	}
 
