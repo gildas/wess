@@ -15,6 +15,7 @@ import (
 	"github.com/gildas/go-core"
 	"github.com/gildas/go-logger"
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 )
 
 // ServerOptions defines the options for the server
@@ -133,6 +134,45 @@ type ServerOptions struct {
 	// Configurable Handler to be used when the request method
 	// does not match the route.
 	MethodNotAllowedHandler http.Handler
+
+	// UseCORS tells if the server should use CORS
+	UseCORS bool
+
+	// AllowedCORSHeaders is the list of allowed headers
+	AllowedCORSHeaders []string
+
+	// AllowedCORSMethods is the list of allowed methods
+	AllowedCORSMethods []string
+
+	// AllowedCORSOrigins is the list of allowed origins
+	AllowedCORSOrigins []string
+
+	// ExposedCORSHeader is the list of headers that are safe to expose to
+	// the API of a CORS API specification
+	ExposedCORSHeaders []string
+
+	// CORSMaxAge indicates how long (in seconds) the results of a preflight
+	// request can be cached
+	CORSMaxAge time.Duration
+
+	// CORSAllowCredentials indicates whether the request can include user credentials
+	// like cookies, HTTP authentication or client side SSL certificates
+	CORSAllowCredentials bool
+
+	// AllowOriginFunc is a custom function to validate the origin
+	AllowOriginFunc func(origin string) bool
+
+	// CPRSAllowPrivateNetwork indicates whether to acceptrequests
+	// over a private network
+	CORSAllowPrivateNetwork bool
+
+	// CORSOptionsPasthrough instructs preflight to let other potential next handlers to
+	// process the OPTIONS method. Turn this on if your application handles OPTIONS.
+	CORSOptionsPasthrough bool
+
+	// CORSOptionsSuccessStatus provides a status code to use for
+	// successful OPTIONS requests, instead of http.StatusNoContent (204)
+	CORSOptionsSuccessStatus int
 }
 
 // Server defines a Web Server
@@ -226,6 +266,28 @@ func NewServer(options ServerOptions) *Server {
 		}
 	}
 
+	var webhandler http.Handler
+
+	if options.UseCORS {
+		corsMiddleware := cors.New(cors.Options{
+			AllowedOrigins:       options.AllowedCORSOrigins,
+			AllowedHeaders:       options.AllowedCORSHeaders,
+			AllowedMethods:       options.AllowedCORSMethods,
+			ExposedHeaders:       options.ExposedCORSHeaders,
+			MaxAge:               int(options.CORSMaxAge.Seconds()),
+			AllowOriginFunc:      options.AllowOriginFunc,
+			AllowCredentials:     options.CORSAllowCredentials,
+			AllowPrivateNetwork:  options.CORSAllowPrivateNetwork,
+			OptionsPassthrough:   options.CORSOptionsPasthrough,
+			OptionsSuccessStatus: options.CORSOptionsSuccessStatus,
+			Debug:                options.Logger.ShouldWrite(logger.DEBUG, "cors", "cors"),
+		})
+		corsMiddleware.Log = CorsLogger{options.Logger.Child("cors", "cors")}
+		webhandler = corsMiddleware.Handler(options.Router)
+	} else {
+		webhandler = options.Router
+	}
+
 	return &Server{
 		ShutdownTimeout: options.ShutdownTimeout,
 		logger:          options.Logger,
@@ -234,7 +296,7 @@ func NewServer(options ServerOptions) *Server {
 		probeserver:     probeserver,
 		webserver: &http.Server{
 			Addr:              fmt.Sprintf("%s:%d", options.Address, options.Port),
-			Handler:           options.Router,
+			Handler:           webhandler,
 			TLSConfig:         options.TLSConfig,
 			ReadTimeout:       options.ReadTimeout,
 			ReadHeaderTimeout: options.ReadHeaderTimeout,
