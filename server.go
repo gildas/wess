@@ -135,9 +135,6 @@ type ServerOptions struct {
 	// does not match the route.
 	MethodNotAllowedHandler http.Handler
 
-	// UseCORS tells if the server should use CORS
-	UseCORS bool
-
 	// AllowedCORSHeaders is the list of allowed headers
 	AllowedCORSHeaders []string
 
@@ -268,7 +265,29 @@ func NewServer(options ServerOptions) *Server {
 
 	var webhandler http.Handler
 
-	if options.UseCORS {
+	if len(options.AllowedCORSMethods) > 0 || len(options.AllowedCORSHeaders) > 0 || len(options.AllowedCORSOrigins) > 0 {
+		options.Logger.Infof("CORS is enabled on the webserver")
+		if len(options.AllowedCORSMethods) > 0 {
+			options.Logger.Debugf("CORS: Allowed Methods: %s", strings.Join(options.AllowedCORSMethods, ", "))
+		}
+		if len(options.AllowedCORSHeaders) > 0 {
+			options.Logger.Debugf("CORS: Allowed Headers: %s", strings.Join(options.AllowedCORSHeaders, ", "))
+		}
+		if len(options.AllowedCORSOrigins) > 0 {
+			options.Logger.Debugf("CORS: Allowed Origins: %s", strings.Join(options.AllowedCORSOrigins, ", "))
+		}
+		if len(options.ExposedCORSHeaders) > 0 {
+			options.Logger.Debugf("CORS: Exposed Headers: %s", strings.Join(options.ExposedCORSHeaders, ", "))
+		}
+		if options.CORSMaxAge > 0 {
+			options.Logger.Debugf("CORS: Max Age: %s", options.CORSMaxAge)
+		}
+		options.Logger.Debugf("CORS: Allow Credentials: %t", options.CORSAllowCredentials)
+		options.Logger.Debugf("CORS: Allow Private Network: %t", options.CORSAllowPrivateNetwork)
+		options.Logger.Debugf("CORS: Options Passthrough: %t", options.CORSOptionsPasthrough)
+		if options.CORSOptionsSuccessStatus > 0 {
+			options.Logger.Debugf("CORS: Options Success Status: %d", options.CORSOptionsSuccessStatus)
+		}
 		corsMiddleware := cors.New(cors.Options{
 			AllowedOrigins:       options.AllowedCORSOrigins,
 			AllowedHeaders:       options.AllowedCORSHeaders,
