@@ -25,6 +25,15 @@ You can change the port, give an address to listen to:
 	})
 ```
 
+You can also overwrite the default handlers used when a route is not found or a method is not Allowed:
+```go
+	server := wess.NewServer(wess.ServerOptions{
+		Logger:                  log,
+		NotFoundHandler:         notFoundHandler(log),
+		MethodNotAllowedHandler: methodNotAllowedHandler(Options),
+	})
+```
+
 If you add a `ProbePort`, `wess` will also serve some _health_ routes for Kubernetes or other probe oriented environments. These following routes are available:
 - `/healthz/liveness`
 - `/healthz/readiness`
@@ -50,10 +59,29 @@ You can add a simple route with `AddRoute` and `AddRouteWithFunc`:
 
 The first method accepts a [http.Handler](https://pkg.go.dev/net/http#Handler) while the second accepts a [http.HandlerFunc](https://pkg.go.dev/net/http#HandlerFunc).
 
-For more complex cases, you can simple ask for a [SubRouter](https://pkg.go.dev/github.com/gorilla/mux#Router):
+Here is an embedded example:
+```go
+	server.AddRouteWithFunc("GET", "/hello", func(w http.ResponseWriter, r *http.Request) {
+		log := logger.Must(logger.FromContext(r.Context())).Child(nil, "hello")
+
+		w.WriteHeader(http.StatusOK)
+		w.Header().Add("Content-Type", "text/plain")
+		written, _ := w.Write([]byte("Hello, World!"))
+		log.Debugf("Witten %d bytes", written)
+	})
+```
+
+For more complex cases, you can ask for a [SubRouter](https://pkg.go.dev/github.com/gorilla/mux#Router):
 
 ```go
-	apiRouter := server.SubRouter("/api")
+main() {
+	// ...
+	APIRoutes(server.SubRouter("/api/v1"), dbClient)
+}
+
+func APIRoutes(router *mux.Router, db *db.Client) {
+	router.Method("GET").Path("/users").Handler(GetUsers(db))
+}
 ```
 
 (See the [vue-with-api](samples/vue-with-api/README.md) sample for a complete implementation)
