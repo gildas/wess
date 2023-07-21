@@ -46,6 +46,6 @@ func main() {
 		log.Debugf("Witten %d bytes", written)
 	})
 
-	shutdown, _ := server.Start(context.Background())
+	shutdown, _, _ := server.Start(context.Background())
 	<-shutdown
 }

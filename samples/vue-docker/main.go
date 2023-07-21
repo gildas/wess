@@ -45,6 +45,6 @@ func main() {
 	})
 
 	_ = server.AddFrontend("/", frontendFS, "frontend/dist")
-	shutdown, _ := server.Start(context.Background())
+	shutdown, _, _ := server.Start(context.Background())
 	<-shutdown
 }
