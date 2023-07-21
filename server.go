@@ -8,8 +8,10 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/gildas/go-core"
@@ -353,7 +355,11 @@ func (server Server) SubRouter(path string) *mux.Router {
 }
 
 // Start starts the server
-func (server *Server) Start(context context.Context) (shutdown chan error, err error) {
+//
+// Callers should wait on the returned shutdown channel.
+//
+// Callers can stop the server programatically by sending a signal on the returned stop channel.
+func (server *Server) Start(context context.Context) (shutdown chan error, stop chan os.Signal, err error) {
 	log := server.getChildLogger(context, "webserver", "start")
 
 	if server.proberouter != nil {
@@ -368,14 +374,15 @@ func (server *Server) Start(context context.Context) (shutdown chan error, err e
 		plog.Infof("Health probes listening on %s", server.probeserver.Addr)
 		server.logRoutes(plog.ToContext(context), server.probeserver.Handler.(*mux.Router))
 		if err = server.waitForStart(plog.ToContext(context), server.probeserver); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
 	if err = server.waitForStart(log.ToContext(context), server.webserver); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return server.waitForShutdown(log.ToContext(context)), nil
+	shutdown, stop = server.waitForShutdown(log.ToContext(context))
+	return
 }
 
 // logRoutes logs the routes
@@ -436,13 +443,14 @@ func (server *Server) waitForStart(context context.Context, httpserver *http.Ser
 }
 
 // waitForShutdown waits for the server to shutdown
-func (server Server) waitForShutdown(ctx context.Context) (shutdown chan error) {
-	interruptChannel := make(chan os.Signal, 1)
+func (server Server) waitForShutdown(ctx context.Context) (shutdown chan error, stop chan os.Signal) {
+	stop = make(chan os.Signal, 1)
 	shutdown = make(chan error, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
 		log := server.getChildLogger(ctx, "webserver", "shutdown")
-		sig := <-interruptChannel
+		sig := <-stop
 		context, cancel := context.WithTimeout(ctx, server.ShutdownTimeout)
 		defer cancel()
 		log.Infof("Received signal %s, shutting down...", sig)
@@ -453,6 +461,7 @@ func (server Server) waitForShutdown(ctx context.Context) (shutdown chan error) 
 			server.probeserver.SetKeepAlivesEnabled(false)
 			if err := server.probeserver.Shutdown(context); err != nil {
 				log.Errorf("Failed to gracefully shutdown the probe server: %s", err)
+				_ = server.probeserver.Close()
 			} else {
 				log.Infof("Probe Server stopped")
 			}
@@ -464,13 +473,14 @@ func (server Server) waitForShutdown(ctx context.Context) (shutdown chan error) 
 		server.webserver.SetKeepAlivesEnabled(false)
 		if err := server.webserver.Shutdown(context); err != nil {
 			log.Errorf("Failed to gracefully shutdown the server: %s", err)
+			_ = server.webserver.Close()
 			shutdown <- err
 		} else {
 			log.Infof("WEB Server stopped")
 		}
 		shutdown <- nil
 	}()
-	return shutdown
+	return shutdown, stop
 }
 
 // getChildLogger gets a child logger

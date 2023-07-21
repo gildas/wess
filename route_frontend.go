@@ -17,17 +17,11 @@ func (pfs protectedFileSystem) Open(filepath string) (http.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	stat, err := file.Stat()
-	if err != nil {
-		return nil, err
-	}
-
+	stat, _ := file.Stat()
 	if stat.IsDir() {
 		index := path.Join(filepath, "index.html")
 		if _, err := pfs.fs.Open(index); err != nil {
-			if cerr := file.Close(); cerr != nil {
-				return nil, cerr
-			}
+			_ = file.Close()
 			return nil, err
 		}
 	}

@@ -1,4 +1,18 @@
 # wess
+
+![GoVersion](https://img.shields.io/github/go-mod/go-version/gildas/wess)
+[![GoDoc](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/gildas/wess) 
+[![License](https://img.shields.io/github/license/gildas/wess)](https://github.com/gildas/wess/blob/master/LICENSE) 
+[![Report](https://goreportcard.com/badge/github.com/gildas/wess)](https://goreportcard.com/report/github.com/gildas/wess)  
+
+![master](https://img.shields.io/badge/branch-master-informational)
+[![Test](https://github.com/gildas/wess/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/gildas/wess/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/gildas/wess/branch/master/graph/badge.svg?token=gFCzS9b7Mu)](https://codecov.io/gh/gildas/wess/branch/master)
+
+![dev](https://img.shields.io/badge/branch-dev-informational)
+[![Test](https://github.com/gildas/wess/actions/workflows/test.yml/badge.svg?branch=dev)](https://github.com/gildas/wess/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/gildas/wess/branch/dev/graph/badge.svg?token=gFCzS9b7Mu)](https://codecov.io/gh/gildas/wess/branch/dev)
+
 WEb Simple Server
 
 ## Running a WESS instance
@@ -10,10 +24,12 @@ Running a WESS instance is very easy, by default on port 80 all interfaces:
 ```go
 func main() {
 	server := wess.NewServer(wess.ServerOptions{})
-	shutdown, _ := server.Start(context.Background())
-	<-shutdown
+	shutdown, stop, _ := server.Start(context.Background())
+	err = <-shutdown
 }
 ```
+
+`err` will contain the eventual errors when the server shuts down and `stop` is a `chan` that allows you to stop the server programmatically.
 
 Of course that server does not serve much...
 
@@ -142,7 +158,7 @@ func main() {
 		Port:   8080,
 	})
 	_ = server.AddFrontend("/", frontendFS, "frontend/dist")
-	shutdown, _ := server.Start(context.Background())
+	shutdown, stop, _ := server.Start(context.Background())
 	<-shutdown
 }
 ```
