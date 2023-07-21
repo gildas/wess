@@ -399,7 +399,7 @@ func (suite *ServerSuite) TestShouldFailStartingWithInvalidPort() {
 
 func (suite *ServerSuite) TestShouldFailStartingWithInvalidProbePort() {
 	server := NewServer(ServerOptions{
-		ProbePort: 12,
+		ProbePort: -1,
 	})
 	suite.Require().NotNil(server, "Server should not be nil")
 	shutdown, _, err := server.Start(context.Background())
