@@ -1,4 +1,18 @@
 # wess
+
+![GoVersion](https://img.shields.io/github/go-mod/go-version/gildas/wess)
+[![GoDoc](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/gildas/wess) 
+[![License](https://img.shields.io/github/license/gildas/wess)](https://github.com/gildas/wess/blob/master/LICENSE) 
+[![Report](https://goreportcard.com/badge/github.com/gildas/wess)](https://goreportcard.com/report/github.com/gildas/wess)  
+
+![master](https://img.shields.io/badge/branch-master-informational)
+[![Test](https://github.com/gildas/wess/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/gildas/wess/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/gildas/wess/branch/master/graph/badge.svg?token=gFCzS9b7Mu)](https://codecov.io/gh/gildas/wess/branch/master)
+
+![dev](https://img.shields.io/badge/branch-dev-informational)
+[![Test](https://github.com/gildas/wess/actions/workflows/test.yml/badge.svg?branch=dev)](https://github.com/gildas/wess/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/gildas/wess/branch/dev/graph/badge.svg?token=gFCzS9b7Mu)](https://codecov.io/gh/gildas/wess/branch/dev)
+
 WEb Simple Server
 
 ## Running a WESS instance
@@ -10,10 +24,12 @@ Running a WESS instance is very easy, by default on port 80 all interfaces:
 ```go
 func main() {
 	server := wess.NewServer(wess.ServerOptions{})
-	shutdown, _ := server.Start(context.Background())
-	<-shutdown
+	shutdown, stop, _ := server.Start(context.Background())
+	err = <-shutdown
 }
 ```
+
+`err` will contain the eventual errors when the server shuts down and `stop` is a `chan` that allows you to stop the server programmatically.
 
 Of course that server does not serve much...
 
@@ -22,6 +38,15 @@ You can change the port, give an address to listen to:
 	server := wess.NewServer(wess.ServerOptions{
 		Address: "192.168.1.1",
 		Port:    8000,
+	})
+```
+
+You can also overwrite the default handlers used when a route is not found or a method is not Allowed:
+```go
+	server := wess.NewServer(wess.ServerOptions{
+		Logger:                  log,
+		NotFoundHandler:         notFoundHandler(log),
+		MethodNotAllowedHandler: methodNotAllowedHandler(Options),
 	})
 ```
 
@@ -50,10 +75,29 @@ You can add a simple route with `AddRoute` and `AddRouteWithFunc`:
 
 The first method accepts a [http.Handler](https://pkg.go.dev/net/http#Handler) while the second accepts a [http.HandlerFunc](https://pkg.go.dev/net/http#HandlerFunc).
 
-For more complex cases, you can simple ask for a [SubRouter](https://pkg.go.dev/github.com/gorilla/mux#Router):
+Here is an embedded example:
+```go
+	server.AddRouteWithFunc("GET", "/hello", func(w http.ResponseWriter, r *http.Request) {
+		log := logger.Must(logger.FromContext(r.Context())).Child(nil, "hello")
+
+		w.WriteHeader(http.StatusOK)
+		w.Header().Add("Content-Type", "text/plain")
+		written, _ := w.Write([]byte("Hello, World!"))
+		log.Debugf("Witten %d bytes", written)
+	})
+```
+
+For more complex cases, you can ask for a [SubRouter](https://pkg.go.dev/github.com/gorilla/mux#Router):
 
 ```go
-	apiRouter := server.SubRouter("/api")
+main() {
+	// ...
+	APIRoutes(server.SubRouter("/api/v1"), dbClient)
+}
+
+func APIRoutes(router *mux.Router, db *db.Client) {
+	router.Method("GET").Path("/users").Handler(GetUsers(db))
+}
 ```
 
 (See the [vue-with-api](samples/vue-with-api/README.md) sample for a complete implementation)
@@ -114,7 +158,7 @@ func main() {
 		Port:   8080,
 	})
 	_ = server.AddFrontend("/", frontendFS, "frontend/dist")
-	shutdown, _ := server.Start(context.Background())
+	shutdown, stop, _ := server.Start(context.Background())
 	<-shutdown
 }
 ```

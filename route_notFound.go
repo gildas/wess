@@ -7,9 +7,9 @@ import (
 )
 
 // notFoundHandler is the handler for the 404 Not Found
-func notFoundHandler() http.Handler {
+func notFoundHandler(log *logger.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log := logger.Must(logger.FromContext(r.Context())).Child(nil, "notfound")
+		log := logger.Must(logger.FromContext(r.Context(), log)).Child(nil, "notfound")
 
 		log.Debugf("Request Headers: %#+v", r.Header)
 		log.Errorf("Route not found: %s %s", r.Method, r.URL.String())
