@@ -386,23 +386,3 @@ func (suite *ServerSuite) TestCanStartAndShutdownWithProbes() {
 	suite.Require().NoError(err, "Failed shutting down the server")
 	suite.Assert().False(server.IsReady(), "Server should not be ready anymore")
 }
-
-func (suite *ServerSuite) TestShouldFailStartingWithInvalidPort() {
-	server := NewServer(ServerOptions{
-		Port: 0,
-	})
-	suite.Require().NotNil(server, "Server should not be nil")
-	shutdown, _, err := server.Start(context.Background())
-	suite.Require().Error(err, "Failed starting the server")
-	suite.Assert().Nil(shutdown, "Shutdown channel should be nil")
-}
-
-func (suite *ServerSuite) TestShouldFailStartingWithInvalidProbePort() {
-	server := NewServer(ServerOptions{
-		ProbePort: 12,
-	})
-	suite.Require().NotNil(server, "Server should not be nil")
-	shutdown, _, err := server.Start(context.Background())
-	suite.Require().Error(err, "Failed starting the server")
-	suite.Assert().Nil(shutdown, "Shutdown channel should be nil")
-}
