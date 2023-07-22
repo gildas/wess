@@ -204,14 +204,14 @@ func NewServer(options ServerOptions) *Server {
 	var probelogger *logger.Logger
 	if options.Logger == nil {
 		options.Logger = logger.Create("wess", &logger.NilStream{})
-		probelogger = logger.Create("wess", &logger.NilStream{})
+		probelogger = options.Logger
 	} else {
+		options.Logger = options.Logger.Child("webserver", "webserver")
 		if core.GetEnvAsBool("TRACE_PROBE", false) {
-			probelogger = options.Logger.Child("probeserver", nil)
+			probelogger = options.Logger.Child("probeserver", "probeserver")
 		} else {
 			probelogger = logger.Create("wess", &logger.NilStream{})
 		}
-		options.Logger = options.Logger.Child("webserver", "webserver")
 	}
 	if options.ErrorLog == nil {
 		options.ErrorLog = options.Logger.AsStandardLog()
@@ -422,7 +422,6 @@ func (server *Server) waitForStart(context context.Context, httpserver *http.Ser
 		if err := httpserver.ListenAndServe(); err != nil {
 			atomic.StoreInt32(&server.healthStatus, 0)
 			if err.Error() != "http: Server closed" {
-				log.Fatalf("Failed to start the WEB server on port %d", server.webserver.Addr, err)
 				started <- err
 			}
 		}
@@ -435,7 +434,7 @@ func (server *Server) waitForStart(context context.Context, httpserver *http.Ser
 		}
 	case <-time.After(time.Second * 1):
 		if httpserver == server.probeserver {
-			log.Child("probeserver", nil).Infof("Health probe server started")
+			log.Child("probeserver", "start").Infof("Health probe server started")
 		} else {
 			log.Infof("WEB Server started")
 		}
