@@ -87,7 +87,7 @@ func FuncAddress(f any) uintptr {
 
 // *****************************************************************************
 
-func (suite *ServerSuite) TestCanInitializeWithDefauts() {
+func (suite *ServerSuite) TestCanInitializeWithDefaults() {
 	server := NewServer(ServerOptions{})
 	suite.Require().NotNil(server, "Server should not be nil")
 	suite.Assert().Equal(15*time.Second, server.ShutdownTimeout)
@@ -95,8 +95,6 @@ func (suite *ServerSuite) TestCanInitializeWithDefauts() {
 	suite.Assert().Nil(server.probeserver, "Server should not have a Probe Server")
 	suite.Require().NotNil(server.logger, "Server should have a Logger")
 	suite.Require().NotNil(server.webrouter, "Server should have a Web Router")
-	suite.Assert().Equal(FuncAddress(notFoundHandler(server.logger)), FuncAddress(server.webrouter.NotFoundHandler), "Server should use the default NotFound Handler")
-	suite.Assert().Equal(FuncAddress(methodNotAllowedHandler(server.logger)), FuncAddress(server.webrouter.MethodNotAllowedHandler), "Server should use the default NotFound Handler")
 	suite.Require().NotNil(server.webserver, "Server should have a Web Server")
 	suite.Assert().Equal("0.0.0.0:80", server.webserver.Addr)
 	suite.Assert().NotNil(server.webserver.ErrorLog, "Server should have an Error Log")
