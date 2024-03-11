@@ -1,4 +1,4 @@
 package wess
 
 // VERSION is the version of the package
-var VERSION = "1.0.7"
+var VERSION = "1.0.8"
