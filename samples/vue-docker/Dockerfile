@@ -1,11 +1,11 @@
-FROM golang:1.20 as builder
+FROM golang:1.23 AS builder
 
 # Copy the source code
 WORKDIR /app
 COPY . .
 
-# Cache the dependencies
-RUN go mod download
+# Update the dependencies
+RUN go get -u -t ./... && go mod tidy
 
 # Build the binary
 RUN GIT_TERMINAL_PROMPT=1 \
@@ -14,7 +14,7 @@ RUN GIT_TERMINAL_PROMPT=1 \
 	go build -o main .
 
 # ---
-FROM alpine:3.18 as system
+FROM alpine:3.19 AS system
 
 # Create a harmless user
 RUN adduser -D -g '' docker
