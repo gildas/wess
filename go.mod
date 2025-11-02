@@ -1,6 +1,6 @@
 module github.com/gildas/wess
 
-go 1.23
+go 1.25
 
 require (
 	github.com/gildas/go-core v0.6.0
