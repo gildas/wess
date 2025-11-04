@@ -117,6 +117,11 @@ type ServerOptions struct {
 	// If nil, logging is done via the Logger defined above.
 	ErrorLog *log.Logger
 
+	// RequestIDHeader is the name of the header
+	// used to fetch/set the request ID.
+	// Default: "X-Request-Id"
+	RequestIDHeader string
+
 	// BaseContext optionally specifies a function that returns
 	// the base context for incoming requests on this server.
 	// The provided Listener is the specific Listener that's
@@ -220,7 +225,11 @@ func NewServer(options ServerOptions) *Server {
 	if options.Router == nil {
 		options.Router = mux.NewRouter().StrictSlash(true)
 	}
-	options.Router.Use(options.Logger.HttpHandler())
+	if len(options.RequestIDHeader) == 0 {
+		options.Router.Use(options.Logger.HttpHandler())
+	} else {
+		options.Router.Use(options.Logger.HttpHandlerWithRequestIDHeader(options.RequestIDHeader))
+	}
 
 	if options.NotFoundHandler != nil {
 		options.Router.NotFoundHandler = options.NotFoundHandler
