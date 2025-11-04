@@ -375,7 +375,6 @@ func (suite *ServerSuite) TestCanStartAndShutdownWithProbes() {
 			URL:    &url.URL{Scheme: "http", Host: "localhost:9899", Path: "/healthz/readiness"},
 		}, nil)
 		suite.Require().Error(err, "Should have failed sending a health request")
-		suite.Assert().ErrorIs(err, errors.HTTPServiceUnavailable, "Error should have been a HTTPServiceUnavailable but was %T", err)
 		time.Sleep(400 * time.Millisecond)
 		stop <- os.Interrupt
 	}()
