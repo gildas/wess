@@ -239,7 +239,6 @@ func NewServer(options ServerOptions) *Server {
 		}
 		if options.ProbePort == options.Port {
 			proberouter = options.Router.PathPrefix(options.HealthRootPath).Subrouter()
-			proberouter.Use(options.Logger.HttpHandler())
 		} else {
 			router := mux.NewRouter().StrictSlash(true)
 			router.Use(options.Logger.HttpHandler())
