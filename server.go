@@ -14,7 +14,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gildas/go-core"
 	"github.com/gildas/go-errors"
 	"github.com/gildas/go-logger"
 	"github.com/gorilla/mux"
@@ -206,18 +205,7 @@ func NewServer(options ServerOptions) *Server {
 		options.ShutdownTimeout = time.Second * 15
 	}
 
-	var probelogger *logger.Logger
-	if options.Logger == nil {
-		options.Logger = logger.Create("wess", &logger.NilStream{})
-		probelogger = options.Logger
-	} else {
-		options.Logger = options.Logger.Child("webserver", "webserver")
-		if core.GetEnvAsBool("TRACE_PROBE", false) {
-			probelogger = options.Logger.Child("probeserver", "probeserver")
-		} else {
-			probelogger = logger.Create("wess", &logger.NilStream{})
-		}
-	}
+	options.Logger = logger.CreateIfNil(options.Logger, "WESS").Child("webserver", "webserver")
 	if options.ErrorLog == nil {
 		options.ErrorLog = options.Logger.AsStandardLog()
 	}
@@ -251,13 +239,13 @@ func NewServer(options ServerOptions) *Server {
 		}
 		if options.ProbePort == options.Port {
 			proberouter = options.Router.PathPrefix(options.HealthRootPath).Subrouter()
-			proberouter.Use(probelogger.HttpHandler())
+			proberouter.Use(options.Logger.HttpHandler())
 		} else {
 			router := mux.NewRouter().StrictSlash(true)
-			router.Use(probelogger.HttpHandler())
+			router.Use(options.Logger.HttpHandler())
 			proberouter = router.PathPrefix(options.HealthRootPath).Subrouter()
-			proberouter.MethodNotAllowedHandler = methodNotAllowedHandler(probelogger)
-			proberouter.NotFoundHandler = notFoundHandler(probelogger)
+			proberouter.MethodNotAllowedHandler = methodNotAllowedHandler(options.Logger)
+			proberouter.NotFoundHandler = notFoundHandler(options.Logger)
 			probeserver = &http.Server{
 				Addr:              fmt.Sprintf("%s:%d", options.Address, options.ProbePort),
 				Handler:           router,

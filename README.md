@@ -68,6 +68,18 @@ server := wess.NewServer(wess.ServerOptions{
 
 **Note:** If the probe port is the same as the main port, all routes are handled by the same web server. Otherwise, 2 web servers are instantiated.
 
+If you do not want to see the health route logs, you can set the `Logger` to not log anything for that route like this:
+
+```go
+log := logger.Create("wess")
+...
+wessLog := log.Child(nil , nil, logger.NewLevelSet(logger.NEVER, "route", "/healthz"))
+server := wess.NewServer(wess.ServerOptions{
+  ...
+  Logger: wessLog,
+})
+```
+
 ### Adding routes
 
 You can add a simple route with `AddRoute` and `AddRouteWithFunc`:
