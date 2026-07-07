@@ -5,7 +5,7 @@ go 1.25.8
 require (
 	github.com/gildas/go-core v0.6.4
 	github.com/gildas/go-errors v0.4.0
-	github.com/gildas/go-logger v1.9.7
+	github.com/gildas/go-logger v1.9.8-0.20260707130953-879b9d3a9c6f
 	github.com/gildas/go-request v0.9.20
 	github.com/gorilla/mux v1.8.1
 	github.com/joho/godotenv v1.5.1
